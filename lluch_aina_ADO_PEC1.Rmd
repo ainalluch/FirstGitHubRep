@@ -1,0 +1,268 @@
+---
+title: "PEC1 - Anàlisi de dades òmiques"
+author: "Aina Lluch Balaña"
+date: "Abril 2020"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+[Repositori GitHub](https://github.com/ainalluch/FirstGitHubRep)
+
+**CONTINGUT**
+
+- [Abstract](#id1)
+
+- [Objectiu](#id2)
+
+- [Materials i mètodes](#id3)
+
+  * [Disseny experimental ](#id3.1)
+  * [Obtenció i caracterització de les dades](#id3.2)
+  * [Control de qualitat de les dades crues](#id3.3)
+  * [Normalització](#id3.4)
+  * [Detecció dels gens més variables i filtrat dels menys variables](#id3.5)
+  * [Design and contrast matrix](#id3.6)
+  * [Estimació del model i selecció de gens diferencialment expressats](#id3.7)
+  * [Vulcano plot](#id3.8)
+  
+- [Resultats](#id4)
+
+- [Discussió/Comentari general](#id5)
+
+- [Referències](#id6)
+
+<div id='id1' />
+## Abstract
+
+Les neurones sensorials primàries del gangli de l’arrel dorsal (DRG) responen i retransmeten sensacions que es senten, com ara les de tacte, dolor, temperatura, picor, entre d'altres. Aquest es tracta d'un estudi de perfil d'expressió mitjançant un anàlisi per microarray de les neurones DRG a les quals se'ls hi ha eliminat la kinasa hepàtica B1 (LKB1) en l'espècie *Mus Musculus*.
+
+<div id='id2' />
+## Objectiu
+
+L’objectiu d’aquest estudi és descobrir canvis en l'expressió gènica en les neurones sensorials del ratolí quan s'elimina la kinasa hepàtica B1 (LKB1).
+
+<div id='id3' />
+## Materials i mètodes 
+
+
+<div id='id3.1' />
+**Disseny experimental**
+
+- mRNA extret a partir de neurones sensorials DRG directament aïllades d'embrions de ratolí. 
+
+- 5 rèpliques independents per cada genotip: *wild-type* (**WT**) o *knock-out* pel gen LKB1 (**LKB1 KO**). Fent un total de **10 mostres**.
+
+- Microarray utilitzat: [MoGene-1_0-st] Affymetrix Mouse Gene 1.0 ST Array [transcript (gene) version].
+
+
+<div id='id3.2' />
+**Obtenció i caracterització de les dades**
+
+Les dades han sigut adquirides mitjançant el paquet *GEOquery* amb el número d'accés GSE146756 a la base de dades GEO. El resultat final és un *ExpressionSet* guardat en una *list*. Les dimensions del *dataset* és de 10 mostres i 35556 *features*. 
+
+```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
+library(GEOquery) 
+gse146756 <- getGEO('GSE146756',GSEMatrix = TRUE)
+```
+
+```{r, echo=FALSE}
+class(gse146756)
+length(gse146756)
+esetMM <- gse146756[[1]]
+class(esetMM)
+esetMM
+```
+
+```{r, echo=FALSE}
+dims(esetMM)
+names(pData(esetMM))
+esetMM$`genotype/variaton:ch1`
+```
+
+<div id='id3.3' />
+**Control de qualitat de les dades crues**
+
+El control de qualitat de les dades, en aquest cas les no normalitzades, es pot fer mitjançant el paquet *arrayQualityMetrics*. 
+
+```{r}
+#library(arrayQualityMetrics)
+#arrayQualityMetrics(esetMM)
+```
+
+El resultat de l'anàlisi és el següent:
+```{r, echo=FALSE, fig.cap="**Table 1: Array metadata and outlier detection overview**", out.width = '60%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/taula.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 1: Distances between arrays**", out.width = '30%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/hm.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 2: Outlier detection for Distances between arrays**", out.width = '20%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/out hm.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 3: Principal Component Analysis**", out.width = '30%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/pca.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 4: Boxplot**", out.width = '30%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/box.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 5: Outlier detection for Boxplots**", out.width = '20%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/out box.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 6: Density plots**", out.width = '30%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/dens.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 7: Standard deviation versus rank of the mean**", out.width = '30%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/msd.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 8: MA plots**", out.width = '80%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/ma.png")
+```
+
+```{r, echo=FALSE, fig.cap="**Figure 9: Outlier detection for MA plots**", out.width = '20%'}
+knitr::include_graphics("C:/Users/Aina Lluch/Documents/GitHub/FirstGitHubRep/arrayQualityMetrics report for esetMM/out ma.png")
+```
+
+En l'anàlisi es pot observar com la mostra 8 (GSM405443), corresponent a una rèplica del grup LKB1 KO, és detectada com un *outlier* del conjunt de mostres, de manera que seria interessant no tenir-la en compte ja que pot distorsionar els resultats finals.
+
+Exemple de boxplot fet amb Rstudio, equivalent al boxplot generat en l'anàlisi del paquet *arrayQualityMetrics*:
+
+```{r, echo=FALSE}
+boxplot(exprs(esetMM), cex.axis=0.5, horizontal=TRUE, las=1, col=c(rep("green",1),rep("darkgreen",1)), main="Distribution of raw intensity values")
+```
+
+<div id='id3.4' />
+**Normalització**
+```{r}
+#library(oligo)
+#esetMM_norm <- rma(esetMM)
+```
+Traceback del error:
+
+Error in (function (classes, fdef, mtable) : unable to find an inherited method for function 'rma' for signature '"ExpressionSet"'
+
+3.stop(gettextf("unable to find an inherited method for function %s for signature %s", sQuote(fdef@generic), sQuote(cnames)), domain = NA)
+
+2.(function (classes, fdef, mtable) { methods <- .findInheritedMethods(classes, fdef, mtable) if (length(methods) == 1L) ...
+
+1.ma(esetMM)
+
+COMENTARI: 
+
+- He provat d'assegurar-me que no hi haguessin els paquets affy i oligo activats a la vegada.
+
+- Vaig descarregar el paquet oligo de nou.
+
+- He provat amb ambdós paquets per separat.
+
+- M'ha generat el mateix error en anteriors datasets amb els que he treballat per fer aquesta PEC i no he aconseguit normalitzar les dades en cap dels casos.
+
+<div id='id3.5' />
+**Detecció dels gens més variables i filtrat dels menys variables**
+
+Degut al error anterior, vaig decidir seguir treballant amb les dades sense normalitzar per tal de veure tot el procés. Aquí hi ha la gràfica de distribució de variabilitat del conjunt dels gens. Veiem que els gens que més varien són els que tenen una desviació estàndard per sobre del 95% de desvest (segona línia vertical):
+
+```{r, echo=FALSE}
+vg <- apply (exprs(esetMM), 1, sd)
+vg2 <- sort(vg)
+plot(1:length(vg2), vg2, main="Distribution of genes variability", xlab="Gene index (from least to most variable)", ylab="Standard deviation")
+abline(v=length(vg)*c(0.9,0.95))
+```
+
+Per tal de dur a terme el filtrat, vaig descarregar el paquet d'anotacions corresponent al array utilitzat en l'estudi, que és el pd.mogene.1.0.st.v1. No he sabut corregir el motiu pel qual em dóna error. 
+
+```{r}
+#library(genefilter)
+#library(pd.mogene.1.0.st.v1)
+#esetMM_filt <- nsFilter(esetMM, require.entrez = TRUE, remove.dupEntrez = TRUE, var.filter = TRUE, var.func = IQR, var.cutoff = 0.75, filterByQuantile = TRUE, feature.exclude = "^AFFX")
+```
+
+Error: getAnnMap: package GPL6246 not available 
+
+<div id='id3.6' />
+**Design and contrast matrix**
+
+Tot i l'error generat, vaig decidir seguir per seguir veient el procés. La matriu generada:
+
+```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
+library(limma) 
+designMat <- model.matrix(~0+esetMM$`genotype/variaton:ch1`, pData(esetMM))
+colnames(designMat) <- c("KO", "WT")
+```
+
+```{r, echo=TRUE}
+print(designMat)
+```
+
+I la matriu de contrast, només hi ha una comparació en aquest estudi, que és KOvsWT:
+
+```{r}
+cont.matrix <- makeContrasts(KOvsWT = KO-WT, levels = designMat)
+print(cont.matrix)
+```
+
+<div id='id3.7' />
+**Estimació del model i selecció de gens diferencialment expressats**
+
+```{r, echo=FALSE}
+library(limma)
+fit <- lmFit(esetMM, designMat)
+fit.main <- contrasts.fit(fit, cont.matrix)
+fit.main <- eBayes(fit.main)
+class(fit.main)
+```
+
+```{r}
+tableKOvsWT <- topTable(fit.main,number=nrow(fit.main), coef="KOvsWT")
+head(tableKOvsWT[, 13:18])
+```
+
+<div id='id3.8' />
+**Vulcano plot**
+
+```{r echo=FALSE}
+volcanoplot(fit.main, coef=1, highlight=2, 
+             main=paste("Differentially expressed genes", colnames(cont.matrix)[1], sep="\n"))
+```
+
+```{r}
+tableKOvsWT[0:2, 2:2]
+```
+ 
+ El primer (ID:10432675) correspon al gen RIKEN cDNA I730030J21 
+ 
+ El segon (ID:10368175) correspon al gen phosphodiesterase 7B (Pde7b) 
+
+
+<div id='id4' />
+ **Resultats**
+ 
+ De les parts que he pogut resoldre, la mostra 8 la extreuria de l'anàlisi. Quant als gens diferencialment expressats, tot i que ho he fet amb les dades crues i per tant no seria del tot correcte, els dos gens més significativament diferents entre els genotips KO i WT són el gen gen RIKEN cDNA I730030J21 i la phosphodiesterase 7B (Pde7b). 
+ 
+ Queda pendent l'execució de l'anàlisi de significació biològica. 
+ 
+ 
+
+<div id='id5' />
+**Discussió/Comentari general**
+
+L'informe que entrego no és complet. Alguns errors que m'han sorgit per normalitzar les dades i pel seu posterior filtratje, no he sigut capaç de solventar-los. Tot i així he decidit seguir amb l'anàlisi fent servir les dades crues per tal de simular el procés gairebé complet de l'anàlisi. 
+
+<div id='id6' />
+**Referències**
+
+https://www.bioconductor.org/packages/release/bioc/vignettes/Biobase/inst/doc/ExpressionSetIntroduction.pdf)
+
+http://bioconductor.org/packages/release/bioc/vignettes/oligo/inst/doc/oug.pdf
+
+https://wiki.bits.vib.be/index.php/Analyze_your_own_microarray_data_in_R/Bioconductor
+
+I tot el material proporcionat en l'assignatura 
